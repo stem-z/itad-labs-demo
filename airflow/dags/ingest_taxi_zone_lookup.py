@@ -1,4 +1,4 @@
-"""DAG ЛР № 2: дождаться HTTP-источника и загрузить его в raw."""
+"""DAG ЛР № 2: загрузить справочник зон NYC Taxi в raw."""
 
 from datetime import datetime
 from urllib.parse import urlsplit
@@ -8,11 +8,9 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.http.sensors.http import HttpSensor
 from ingestion.load_raw import load_to_raw
 
-# Публичные параметры конкретного учебного источника.
-# Host URL должен совпадать с AIRFLOW_CONN_SOURCE_HTTP_CONN в .env.
-SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2025-01.parquet"
-SOURCE_FILENAME = "green_tripdata_2025-01.parquet"
-DATASET_SLUG = "green_tripdata"
+SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
+SOURCE_FILENAME = "taxi_zone_lookup.csv"
+DATASET_SLUG = "taxi_zone_lookup"
 HTTP_CONN_ID = "source_http_conn"
 S3_CONN_ID = "minio_s3_conn"
 
@@ -22,16 +20,16 @@ if parsed_url.query:
     endpoint = f"{endpoint}?{parsed_url.query}"
 
 with DAG(
-    dag_id="ingest_raw",
-    description="Проверяет HTTP-источник и записывает сырые данные в raw-слой MinIO.",
+    dag_id="ingest_taxi_zone_lookup",
+    description="Проверяет и записывает справочник зон NYC Taxi в raw-слой MinIO.",
     start_date=datetime(2026, 9, 16),
     schedule="@daily",
-    catchup=True,
-    tags=["raw"],
+    catchup=False,
     max_active_runs=1,
+    tags=["raw", "reference-data"],
 ) as dag:
-    wait_for_primary_source = HttpSensor(
-        task_id="wait_for_primary_source",
+    wait_for_lookup_source = HttpSensor(
+        task_id="wait_for_lookup_source",
         http_conn_id=HTTP_CONN_ID,
         endpoint=endpoint,
         method="HEAD",
@@ -39,8 +37,8 @@ with DAG(
         timeout=600,
     )
 
-    load_to_raw_task = PythonOperator(
-        task_id="load_to_raw",
+    load_lookup_to_raw = PythonOperator(
+        task_id="load_lookup_to_raw",
         python_callable=load_to_raw,
         op_kwargs={
             "source_url": SOURCE_URL,
@@ -50,4 +48,4 @@ with DAG(
         },
     )
 
-    wait_for_primary_source >> load_to_raw_task
+    wait_for_lookup_source >> load_lookup_to_raw

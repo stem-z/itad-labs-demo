@@ -1,11 +1,12 @@
 """DAG ЛР № 2: дождаться HTTP-источника и загрузить его в raw."""
 
-from datetime import datetime
 from urllib.parse import urlsplit
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.http.sensors.http import HttpSensor
+from airflow.utils.dates import days_ago
+
 from ingestion.load_raw import load_to_raw
 
 # Публичные параметры конкретного учебного источника.
@@ -24,7 +25,7 @@ if parsed_url.query:
 with DAG(
     dag_id="ingest_raw",
     description="Проверяет HTTP-источник и записывает сырые данные в raw-слой MinIO.",
-    start_date=datetime(2026, 9, 16),
+    start_date=days_ago(2),
     schedule="@daily",
     catchup=True,
     tags=["raw"],

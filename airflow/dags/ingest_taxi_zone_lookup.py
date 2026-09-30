@@ -1,11 +1,12 @@
 """DAG ЛР № 2: загрузить справочник зон NYC Taxi в raw."""
 
-from datetime import datetime
 from urllib.parse import urlsplit
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.http.sensors.http import HttpSensor
+from airflow.utils.dates import days_ago
+
 from ingestion.load_raw import load_to_raw
 
 SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
@@ -22,9 +23,9 @@ if parsed_url.query:
 with DAG(
     dag_id="ingest_taxi_zone_lookup",
     description="Проверяет и записывает справочник зон NYC Taxi в raw-слой MinIO.",
-    start_date=datetime(2026, 9, 16),
+    start_date=days_ago(2),
     schedule="@daily",
-    catchup=False,
+    catchup=True,
     max_active_runs=1,
     tags=["raw", "reference-data"],
 ) as dag:

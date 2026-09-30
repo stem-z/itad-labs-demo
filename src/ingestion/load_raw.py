@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import requests
-from botocore.exceptions import ClientError
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
@@ -26,13 +25,8 @@ def load_to_raw(
     s3_hook = S3Hook(aws_conn_id=s3_conn_id)
 
     if not s3_hook.check_for_bucket(bucket_name=RAW_BUCKET):
-        try:
-            s3_hook.create_bucket(bucket_name=RAW_BUCKET)
-            logging.info("Created raw bucket: s3://%s", RAW_BUCKET)
-        except ClientError as error:
-            error_code = error.response.get("Error", {}).get("Code")
-            if error_code not in {"BucketAlreadyExists", "BucketAlreadyOwnedByYou"}:
-                raise
+        s3_hook.create_bucket(bucket_name=RAW_BUCKET)
+        logging.info("Created raw bucket: s3://%s", RAW_BUCKET)
 
     if s3_hook.check_for_key(key=key, bucket_name=RAW_BUCKET):
         logging.info(

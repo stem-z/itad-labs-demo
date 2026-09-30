@@ -51,7 +51,9 @@ def main() -> None:
 
     connection = duckdb.connect()
     configure_minio(connection)
-    rows = connection.execute(f"SELECT * FROM {reader}(?) LIMIT 5", [object_path]).fetchall()
+    rows = connection.execute(
+        f"SELECT * FROM {reader}(?) LIMIT 5", [object_path]
+    ).fetchall()
     for row in rows:
         print(row)
 

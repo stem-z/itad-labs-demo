@@ -27,10 +27,10 @@ def reader_for(filename: str) -> str:
 
 
 def configure_s3(connection: duckdb.DuckDBPyConnection) -> None:
-    """Настроить S3-совместимый доступ DuckDB к локальному s3."""
-    endpoint = os.getenv("S3_ENDPOINT", "localhost:9000")
-    access_key = os.getenv("ROOT_USER", "s3admin")
-    secret_key = os.getenv("ROOT_PASSWORD", "s3admin123")
+    """Настроить S3-совместимый доступ DuckDB к локальному SeaweedFS."""
+    endpoint = os.getenv("S3_ENDPOINT")
+    access_key = os.getenv("S3_ACCESS_KEY")
+    secret_key = os.getenv("S3_SECRET_KEY")
 
     connection.execute("INSTALL httpfs")
     connection.execute("LOAD httpfs")

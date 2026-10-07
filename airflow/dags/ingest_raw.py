@@ -25,7 +25,7 @@ if parsed_url.query:
 
 with DAG(
     dag_id="ingest_raw",
-    description="Проверяет HTTP-источник и записывает сырые данные в raw-слой MinIO.",
+    description="Проверяет HTTP-источник и записывает сырые данные в raw-слой s3.",
     start_date=datetime(2026, 9, 30),
     schedule="@daily",
     catchup=True,

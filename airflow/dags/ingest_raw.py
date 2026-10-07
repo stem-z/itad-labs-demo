@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.http.sensors.http import HttpSensor
+from datetime import datetime
 from airflow.utils.dates import days_ago
 
 from ingestion.load_raw import load_to_raw
@@ -15,7 +16,7 @@ SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_202
 SOURCE_FILENAME = "green_tripdata_2025-01.parquet"
 DATASET_SLUG = "green_tripdata"
 HTTP_CONN_ID = "source_http_conn"
-S3_CONN_ID = "minio_s3_conn"
+S3_CONN_ID = "s3_conn"
 
 parsed_url = urlsplit(SOURCE_URL)
 endpoint = parsed_url.path or "/"
@@ -25,7 +26,7 @@ if parsed_url.query:
 with DAG(
     dag_id="ingest_raw",
     description="Проверяет HTTP-источник и записывает сырые данные в raw-слой MinIO.",
-    start_date=days_ago(2),
+    start_date=datetime(2026, 9, 30),
     schedule="@daily",
     catchup=True,
     tags=["raw"],

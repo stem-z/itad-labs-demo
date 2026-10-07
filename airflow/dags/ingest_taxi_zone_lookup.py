@@ -1,5 +1,5 @@
 """DAG ЛР № 2: загрузить справочник зон NYC Taxi в raw."""
-
+from datetime import datetime
 from urllib.parse import urlsplit
 
 from airflow import DAG
@@ -13,7 +13,7 @@ SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
 SOURCE_FILENAME = "taxi_zone_lookup.csv"
 DATASET_SLUG = "taxi_zone_lookup"
 HTTP_CONN_ID = "source_http_conn"
-S3_CONN_ID = "minio_s3_conn"
+S3_CONN_ID = "s3_conn"
 
 parsed_url = urlsplit(SOURCE_URL)
 endpoint = parsed_url.path or "/"
@@ -22,8 +22,8 @@ if parsed_url.query:
 
 with DAG(
     dag_id="ingest_taxi_zone_lookup",
-    description="Проверяет и записывает справочник зон NYC Taxi в raw-слой MinIO.",
-    start_date=days_ago(2),
+    description="Проверяет и записывает справочник зон NYC Taxi в raw-слой s3.",
+    start_date=datetime(2026,9,30),
     schedule="@daily",
     catchup=True,
     max_active_runs=1,

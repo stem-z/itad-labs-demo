@@ -1,54 +1,66 @@
-"""DAG ЛР № 2: дождаться HTTP-источника и загрузить его в raw."""
-
-from urllib.parse import urlsplit
-
+from datetime import datetime, timedelta
+import os
+import duckdb
 from airflow import DAG
+from airflow.sensors.filesystem import FileSensor
 from airflow.operators.python import PythonOperator
-from airflow.providers.http.sensors.http import HttpSensor
-from airflow.utils.dates import days_ago
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from ingestion.load_raw import load_to_raw
+# Настройки строго под ваш вариант (Airbnb)
+LOCAL_FILE_PATH = "/opt/airflow/data/source/listings.csv"
+S3_BUCKET = "raw"
+S3_KEY = "listings/listings.csv"
 
-# Публичные параметры конкретного учебного источника.
-# Host URL должен совпадать с AIRFLOW_CONN_SOURCE_HTTP_CONN в .env.
-SOURCE_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2025-01.parquet"
-SOURCE_FILENAME = "green_tripdata_2025-01.parquet"
-DATASET_SLUG = "green_tripdata"
-HTTP_CONN_ID = "source_http_conn"
-S3_CONN_ID = "s3_conn"
+default_args = {
+    'owner': 'student',
+    'start_date': datetime(2024, 1, 1),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
 
-parsed_url = urlsplit(SOURCE_URL)
-endpoint = parsed_url.path or "/"
-if parsed_url.query:
-    endpoint = f"{endpoint}?{parsed_url.query}"
+def upload_to_s3(**kwargs):
+    print(f"Начинаем загрузку файла {LOCAL_FILE_PATH} в S3...")
+    if not os.path.exists(LOCAL_FILE_PATH):
+        raise FileNotFoundError(f"Файл не найден: {LOCAL_FILE_PATH}")
+    
+    hook = S3Hook(aws_conn_id='S3_CONN')
+    hook.load_file(filename=LOCAL_FILE_PATH, key=S3_KEY, bucket_name=S3_BUCKET, replace=True)
+    print(f"Файл успешно загружен в s3://{S3_BUCKET}/{S3_KEY}")
+
+def verify_duckdb(**kwargs):
+    print("Проверка файла через DuckDB...")
+    try:
+        con = duckdb.connect()
+        df = con.execute(f"SELECT * FROM '{LOCAL_FILE_PATH}' LIMIT 5").df()
+        print("Файл успешно прочитан! Первые 5 строк:")
+        print(df)
+    except Exception as e:
+        print(f"Ошибка при чтении файла через DuckDB: {e}")
+        raise
 
 with DAG(
-    dag_id="ingest_raw",
-    description="Проверяет HTTP-источник и записывает сырые данные в raw-слой s3.",
-    start_date=days_ago(2),
-    schedule="@daily",
-    catchup=True,
-    tags=["raw"],
-    max_active_runs=1,
+    dag_id='ingest_raw',
+    default_args=default_args,
+    schedule_interval='@daily',
+    catchup=False,
+    tags=['lab2', 'airbnb'],
 ) as dag:
-    wait_for_primary_source = HttpSensor(
-        task_id="wait_for_primary_source",
-        http_conn_id=HTTP_CONN_ID,
-        endpoint=endpoint,
-        method="HEAD",
-        poke_interval=60,
-        timeout=600,
+
+    wait_for_file = FileSensor(
+        task_id='wait_for_file',
+        filepath=LOCAL_FILE_PATH,
+        poke_interval=10,
+        timeout=60,
     )
 
-    load_to_raw_task = PythonOperator(
-        task_id="load_to_raw",
-        python_callable=load_to_raw,
-        op_kwargs={
-            "source_url": SOURCE_URL,
-            "source_filename": SOURCE_FILENAME,
-            "dataset_slug": DATASET_SLUG,
-            "s3_conn_id": S3_CONN_ID,
-        },
+    upload_task = PythonOperator(
+        task_id='upload_to_s3',
+        python_callable=upload_to_s3,
     )
 
-    wait_for_primary_source >> load_to_raw_task
+    verify_task = PythonOperator(
+        task_id='verify_duckdb',
+        python_callable=verify_duckdb,
+    )
+
+    wait_for_file >> upload_task >> verify_task

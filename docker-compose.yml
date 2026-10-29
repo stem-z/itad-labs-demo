@@ -19,6 +19,7 @@ x-airflow-common: &airflow-common
     PYTHONPATH: /opt/airflow/project/src
   volumes:
     - ./airflow/dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
     - ./config:/opt/airflow/project/config:ro
     - ./dbt:/opt/airflow/project/dbt:ro
     - ./src:/opt/airflow/project/src:ro

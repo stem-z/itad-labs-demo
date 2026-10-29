@@ -16,6 +16,7 @@ dependencies = [
 [dependency-groups]
 dev = [
   "ipykernel>=6.29,<8",
+  "matplotlib>=3.9,<4",
   "pyright>=1.1.414",
   "python-dotenv>=1,<2",
   "ruff==0.8.6",
